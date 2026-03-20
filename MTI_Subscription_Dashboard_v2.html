@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MTI Subscription Intelligence Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --bg:#07080d; --bg1:#0e1018; --bg2:#141620; --bg3:#1c1f2e;
+    --border:rgba(255,255,255,0.07); --border2:rgba(255,255,255,0.12);
+    --text:#e8eaf0; --text2:#8b90a8; --text3:#555a72;
+    --green:#2adc8a; --green-dim:rgba(42,220,138,0.12);
+    --amber:#f5a623; --amber-dim:rgba(245,166,35,0.12);
+    --red:#f25c5c; --red-dim:rgba(242,92,92,0.12);
+    --blue:#4f9cf9; --blue-dim:rgba(79,156,249,0.12);
+    --purple:#a78bfa; --purple-dim:rgba(167,139,250,0.12);
+    --teal:#2dd4bf; --teal-dim:rgba(45,212,191,0.1);
+    --coral:#ff6b6b; --gold:#ffd700;
+    --radius:10px; --radius-lg:14px;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:'DM Mono',monospace;font-size:13px;line-height:1.6;min-height:100vh;}
+  .header{border-bottom:1px solid var(--border);padding:18px 32px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:rgba(7,8,13,0.95);backdrop-filter:blur(12px);z-index:100;}
+  .header-left{display:flex;align-items:center;gap:16px;}
+  .logo-mark{width:32px;height:32px;background:linear-gradient(135deg,var(--green),var(--teal));border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:14px;color:#07080d;}
+  .header-title{font-family:'Syne',sans-serif;font-weight:700;font-size:15px;letter-spacing:0.02em;}
+  .header-sub{font-size:11px;color:var(--text3);margin-top:1px;}
+  .header-badge{font-size:10px;padding:3px 10px;border:1px solid var(--border2);border-radius:20px;color:var(--text2);letter-spacing:0.08em;}
+  .nav{display:flex;gap:2px;padding:0 32px;border-bottom:1px solid var(--border);background:var(--bg1);overflow-x:auto;}
+  .nav::-webkit-scrollbar{display:none;}
+  .tab-btn{padding:14px 18px;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.06em;color:var(--text3);background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;transition:color 0.2s,border-color 0.2s;white-space:nowrap;text-transform:uppercase;}
+  .tab-btn:hover{color:var(--text2);}
+  .tab-btn.active{color:var(--green);border-bottom-color:var(--green);}
+  .content{display:none;padding:32px;max-width:1400px;margin:0 auto;}
+  .content.active{display:block;}
+  .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;}
+  .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:24px;}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:24px;}
+  .grid-2-1{display:grid;grid-template-columns:2fr 1fr;gap:18px;margin-bottom:24px;}
+  .grid-1-2{display:grid;grid-template-columns:1fr 2fr;gap:18px;margin-bottom:24px;}
+  .kpi{background:var(--bg1);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;position:relative;overflow:hidden;}
+  .kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--accent,var(--green));opacity:0.6;}
+  .kpi-label{font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);margin-bottom:8px;}
+  .kpi-value{font-family:'Syne',sans-serif;font-size:28px;font-weight:700;color:var(--text);line-height:1;margin-bottom:6px;}
+  .kpi-value span{font-size:14px;font-weight:400;color:var(--text3);margin-left:4px;}
+  .kpi-sub{font-size:10px;color:var(--text3);}
+  .pos{color:var(--green);} .neg{color:var(--red);} .warn{color:var(--amber);} .info{color:var(--blue);} .muted{color:var(--text3);}
+  .panel{background:var(--bg1);border:1px solid var(--border);border-radius:var(--radius-lg);padding:22px 24px;}
+  .panel-title{font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);margin-bottom:18px;display:flex;align-items:center;gap:8px;}
+  .panel-title::after{content:'';flex:1;height:1px;background:var(--border);}
+  .chart-wrap{position:relative;width:100%;}
+  .section-title{font-family:'Syne',sans-serif;font-size:22px;font-weight:700;margin-bottom:6px;color:var(--text);}
+  .section-desc{font-size:11px;color:var(--text3);margin-bottom:24px;line-height:1.7;}
+  .legend{display:flex;flex-wrap:wrap;gap:16px;margin-bottom:14px;}
+  .legend-item{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text2);}
+  .legend-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0;}
+  .data-table{width:100%;border-collapse:collapse;font-size:11px;}
+  .data-table th{text-align:left;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);padding:8px 12px;border-bottom:1px solid var(--border);font-weight:400;}
+  .data-table td{padding:9px 12px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:middle;}
+  .data-table tr:last-child td{border-bottom:none;}
+  .data-table tr:hover td{background:var(--bg2);}
+  .badge{display:inline-block;font-size:9px;padding:2px 8px;border-radius:4px;letter-spacing:0.06em;text-transform:uppercase;font-weight:500;}
+  .b-green{background:var(--green-dim);color:var(--green);border:1px solid rgba(42,220,138,0.2);}
+  .b-red{background:var(--red-dim);color:var(--red);border:1px solid rgba(242,92,92,0.2);}
+  .b-amber{background:var(--amber-dim);color:var(--amber);border:1px solid rgba(245,166,35,0.2);}
+  .b-blue{background:var(--blue-dim);color:var(--blue);border:1px solid rgba(79,156,249,0.2);}
+  .b-purple{background:var(--purple-dim);color:var(--purple);border:1px solid rgba(167,139,250,0.2);}
+  .progress-bar-wrap{background:var(--bg3);border-radius:4px;height:6px;overflow:hidden;}
+  .progress-bar{height:100%;border-radius:4px;}
+  .divider{height:1px;background:var(--border);margin:28px 0;}
+  .flow-row{display:flex;align-items:center;gap:0;margin-bottom:24px;}
+  .flow-node{flex:1;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);padding:16px 14px;text-align:center;}
+  .flow-node-label{font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);margin-bottom:6px;}
+  .flow-node-val{font-family:'Syne',sans-serif;font-size:20px;font-weight:700;}
+  .flow-node-sub{font-size:10px;color:var(--text3);margin-top:3px;}
+  .flow-arrow{display:flex;flex-direction:column;align-items:center;padding:0 10px;gap:4px;min-width:80px;}
+  .arrow-line{height:1px;width:100%;background:var(--border2);}
+  .arrow-label{font-size:10px;color:var(--text3);white-space:nowrap;}
+  .arrow-count{font-size:11px;font-weight:500;}
+  .insight{background:var(--bg2);border:1px solid var(--border);border-left:3px solid var(--accent,var(--green));border-radius:var(--radius);padding:14px 16px;margin-bottom:10px;}
+  .insight-title{font-size:12px;font-weight:500;color:var(--text);margin-bottom:4px;}
+  .insight-body{font-size:11px;color:var(--text2);line-height:1.65;}
+  .stat-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);}
+  .stat-row:last-child{border-bottom:none;}
+  .stat-label{font-size:11px;color:var(--text2);}
+  .stat-val{font-size:12px;font-weight:500;color:var(--text);}
+  .compare-header{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:1px;background:var(--border);border-radius:var(--radius) var(--radius) 0 0;overflow:hidden;}
+  .compare-cell{background:var(--bg2);padding:12px 16px;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);}
+  .compare-row{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:1px;background:var(--border);margin-top:1px;}
+  .compare-row:last-child{border-radius:0 0 var(--radius) var(--radius);overflow:hidden;}
+  .compare-val{background:var(--bg1);padding:11px 16px;font-size:12px;color:var(--text);}
+  /* product ownership bar */
+  .prod-bar-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);}
+  .prod-bar-row:last-child{border-bottom:none;}
+  .prod-bar-label{width:60px;font-size:11px;color:var(--text2);flex-shrink:0;}
+  .prod-bar-track{flex:1;background:var(--bg3);border-radius:4px;height:8px;position:relative;}
+  .prod-bar-fill{height:100%;border-radius:4px;transition:width 0.5s;}
+  .prod-bar-meta{display:flex;gap:12px;min-width:200px;justify-content:flex-end;}
+  .prod-bar-stat{font-size:11px;text-align:right;}
+  /* highlight row */
+  .hl-green{background:rgba(42,220,138,0.04)!important;}
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-left">
+    <div class="logo-mark">M</div>
+    <div>
+      <div class="header-title">MTI Subscription Intelligence</div>
+      <div class="header-sub">1,628 subscription records · 1,425 unique subscribers · Data as of Mar 2026</div>
+    </div>
+  </div>
+  <div class="header-badge">ANALYTICS DASHBOARD v2</div>
+</header>
+
+<nav class="nav">
+  <button class="tab-btn active" onclick="showTab('overview',this)">01 · Portfolio Overview</button>
+  <button class="tab-btn" onclick="showTab('monthly',this)">02 · Monthly Billing</button>
+  <button class="tab-btn" onclick="showTab('longterm',this)">03 · Annual / LT Plans</button>
+  <button class="tab-btn" onclick="showTab('financed',this)">04 · Financed Plans</button>
+  <button class="tab-btn" onclick="showTab('upgrades',this)">05 · Upgrades & Win-backs</button>
+  <button class="tab-btn" onclick="showTab('newvret',this)">06 · New vs Returning</button>
+  <button class="tab-btn" onclick="showTab('refunds',this)">07 · Refunds & Chargebacks</button>
+  <button class="tab-btn" onclick="showTab('products',this)">08 · Product Ownership Impact</button>
+</nav>
+
+<!-- ══════════════════════════════════ TAB 1: OVERVIEW -->
+<div id="tab-overview" class="content active">
+  <div class="section-title">Portfolio Overview</div>
+  <div class="section-desc">1,628 subscription records across all product lines and billing structures. 727 subscribers (44.7%) owned at least one MTI strategy product before subscribing.</div>
+
+  <div class="grid-4">
+    <div class="kpi" style="--accent:var(--green)">
+      <div class="kpi-label">Total Records</div>
+      <div class="kpi-value">1,628</div>
+      <div class="kpi-sub">All billing types combined</div>
+    </div>
+    <div class="kpi" style="--accent:var(--blue)">
+      <div class="kpi-label">Product Owners</div>
+      <div class="kpi-value">727<span>/ 1,628</span></div>
+      <div class="kpi-sub pos">44.7% — owned UTP/PSPro/TSPro/TTMAX</div>
+    </div>
+    <div class="kpi" style="--accent:var(--red)">
+      <div class="kpi-label">Refund / CB Rate</div>
+      <div class="kpi-value">4.1<span>%</span></div>
+      <div class="kpi-sub">67 events · 10 chargebacks</div>
+    </div>
+    <div class="kpi" style="--accent:var(--amber)">
+      <div class="kpi-label">Product Owners: R/CB Rate</div>
+      <div class="kpi-value">2.3<span>%</span></div>
+      <div class="kpi-sub neg">vs 5.6% for non-owners</div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="panel">
+      <div class="panel-title">Subscriber breakdown by product history</div>
+      <div class="chart-wrap" style="height:240px;"><canvas id="overlapChart"></canvas></div>
+      <div class="legend" style="margin-top:14px;">
+        <div class="legend-item"><div class="legend-dot" style="background:#4f9cf9"></div>Monthly only (784)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#2adc8a"></div>LT only (486)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#a78bfa"></div>Financed only (102)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#f5a623"></div>Multi-product (53)</div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Avg subscription duration: product owners vs non-owners</div>
+      <div class="chart-wrap" style="height:220px;"><canvas id="ownerDurChart"></canvas></div>
+      <div class="divider" style="margin:12px 0;"></div>
+      <div class="stat-row"><span class="stat-label">Non-owners avg duration (expired)</span><span class="stat-val neg">2.45 months</span></div>
+      <div class="stat-row"><span class="stat-label">Product owners avg duration (expired)</span><span class="stat-val pos">5.49 months</span></div>
+      <div class="stat-row"><span class="stat-label">Improvement factor</span><span class="stat-val pos">2.24× longer</span></div>
+    </div>
+  </div>
+
+  <div class="grid-4">
+    <div class="kpi" style="--accent:var(--blue)">
+      <div class="kpi-label">Monthly Active</div>
+      <div class="kpi-value">46</div>
+      <div class="kpi-sub">886 expired · 1 paused</div>
+    </div>
+    <div class="kpi" style="--accent:var(--teal)">
+      <div class="kpi-label">LT Active</div>
+      <div class="kpi-value">246</div>
+      <div class="kpi-sub">277 expired · 34 canceled</div>
+    </div>
+    <div class="kpi" style="--accent:var(--purple)">
+      <div class="kpi-label">Financed Active</div>
+      <div class="kpi-value">57</div>
+      <div class="kpi-sub">76 expired · 2 other</div>
+    </div>
+    <div class="kpi" style="--accent:var(--red)">
+      <div class="kpi-label">Chargebacks</div>
+      <div class="kpi-value">10</div>
+      <div class="kpi-sub neg">All in Chiefs Mastery tier</div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">Month-1 recovery funnel (monthly churners)</div>
+    <div class="flow-row">
+      <div class="flow-node"><div class="flow-node-label">Month-1 Churners</div><div class="flow-node-val neg">569</div><div class="flow-node-sub">65% of expired monthly</div></div>
+      <div class="flow-arrow"><div class="arrow-line"></div><div class="arrow-label">→ LT</div><div class="arrow-count info">27</div><div class="arrow-line"></div></div>
+      <div class="flow-node"><div class="flow-node-label">Upgraded LT</div><div class="flow-node-val info">27</div><div class="flow-node-sub">Median 50 days later</div></div>
+      <div class="flow-arrow"><div class="arrow-line"></div><div class="arrow-label">→ Fin</div><div class="arrow-count" style="color:var(--purple)">+8</div><div class="arrow-line"></div></div>
+      <div class="flow-node"><div class="flow-node-label">Went Financed</div><div class="flow-node-val" style="color:var(--purple)">8</div><div class="flow-node-sub">6 of 8 still active</div></div>
+      <div class="flow-arrow"><div class="arrow-line"></div><div class="arrow-label">lost</div><div class="arrow-count neg">535</div><div class="arrow-line"></div></div>
+      <div class="flow-node"><div class="flow-node-label">Never Returned</div><div class="flow-node-val neg">535</div><div class="flow-node-sub">94% of m1 churners</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════ TAB 2: MONTHLY -->
+<div id="tab-monthly" class="content">
+  <div class="section-title">Monthly Billing Analysis</div>
+  <div class="section-desc">934 monthly subscription records · 886 expired · 65% churn in month 1 · 38.1% owned a strategy product</div>
+
+  <div class="grid-4">
+    <div class="kpi" style="--accent:var(--red)"><div class="kpi-label">Month-1 Churn</div><div class="kpi-value">569<span>/ 876</span></div><div class="kpi-sub neg">65.0% of expired subs</div></div>
+    <div class="kpi" style="--accent:var(--amber)"><div class="kpi-label">Churned by Month 3</div><div class="kpi-value">747<span>/ 876</span></div><div class="kpi-sub warn">85.4% cumulative</div></div>
+    <div class="kpi" style="--accent:var(--green)"><div class="kpi-label">Best Cohort Survival</div><div class="kpi-value">51.9<span>%</span></div><div class="kpi-sub pos">May 2024 (162 subs)</div></div>
+    <div class="kpi" style="--accent:var(--blue)"><div class="kpi-label">Monthly Refund/CB Rate</div><div class="kpi-value">0.86<span>%</span></div><div class="kpi-sub">8 of 934 monthly subs</div></div>
+  </div>
+
+  <div class="grid-2">
+    <div class="panel">
+      <div class="panel-title">Churn distribution by month (expired only)</div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#f25c5c"></div>Month 1 (65%)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#f5a623"></div>Months 2–3</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#555a72"></div>Month 4+</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#4f9cf9;border-radius:50%"></div>Cumulative %</div>
+      </div>
+      <div class="chart-wrap" style="height:240px;"><canvas id="churnDistChart"></canvas></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Survival rate by start cohort (month-year)</div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#2adc8a"></div>Survived past month 1</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#f25c5c"></div>Churned month 1</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#4f9cf9;border-radius:50%"></div>Survival rate %</div>
+      </div>
+      <div class="chart-wrap" style="height:240px;"><canvas id="cohortChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="panel">
+      <div class="panel-title">Survival rate by day of week</div>
+      <div class="chart-wrap" style="height:200px;"><canvas id="dowChart"></canvas></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Survival rate by calendar month</div>
+      <div class="chart-wrap" style="height:200px;"><canvas id="calMonthChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">Product survival by monthly plan</div>
+    <div id="productSurvivalRows"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════ TAB 3: LONG-TERM -->
+<div id="tab-longterm" class="content">
+  <div class="section-title">Annual & Long-term Plans</div>
+  <div class="section-desc">557 LT records · 246 active · 95.7% survive past month 1 · 58.7% owned a strategy product</div>
+
+  <div class="grid-4">
+    <div class="kpi" style="--accent:var(--green)"><div class="kpi-label">Month-1 Survival</div><div class="kpi-value">95.7<span>%</span></div><div class="kpi-sub pos">vs 36.7% for monthly</div></div>
+    <div class="kpi" style="--accent:var(--teal)"><div class="kpi-label">Avg Length (Active)</div><div class="kpi-value">11.6<span>mo</span></div><div class="kpi-sub pos">246 active subscribers</div></div>
+    <div class="kpi" style="--accent:var(--blue)"><div class="kpi-label">Direct Signups</div><div class="kpi-value">515</div><div class="kpi-sub">92.5% never had monthly</div></div>
+    <div class="kpi" style="--accent:var(--red)"><div class="kpi-label">LT Refund/CB Rate</div><div class="kpi-value">7.72<span>%</span></div><div class="kpi-sub neg">43 events · 5 chargebacks</div></div>
+  </div>
+
+  <div class="grid-2">
+    <div class="panel">
+      <div class="panel-title">Avg subscription length by plan</div>
+      <div class="chart-wrap" style="height:280px;"><canvas id="ltPlanChart"></canvas></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">LT vs Monthly — month-1 survival by day of week</div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#f25c5c"></div>Monthly</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#2adc8a"></div>Long-term</div>
+      </div>
+      <div class="chart-wrap" style="height:240px;"><canvas id="ltVsMoDowChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="panel">
+      <div class="panel-title">LT new subscribers by month-year</div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#2adc8a"></div>Direct LT</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#f5a623"></div>From monthly</div>
+      </div>
+      <div class="chart-wrap" style="height:200px;"><canvas id="ltCohortChart"></canvas></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">LT vs Monthly — survival by calendar month</div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#f25c5c"></div>Monthly</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#2adc8a"></div>Long-term</div>
+      </div>
+      <div class="chart-wrap" style="height:200px;"><canvas id="ltVsMoCalChart"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════ TAB 4: FINANCED -->
+<div id="tab-financed" class="content">
+  <div class="section-title">Financed & Ramp Plans</div>
+  <div class="section-desc">137 financed records · 57 active · 11.68% refund/CB rate — highest of all product lines · 32.1% owned a strategy product</div>
+
+  <div class="grid-4">
+    <div class="kpi" style="--accent:var(--purple)"><div class="kpi-label">Total Financed</div><div class="kpi-value">137</div><div class="kpi-sub">All plan types</div></div>
+    <div class="kpi" style="--accent:var(--green)"><div class="kpi-label">Brand New to MTI</div><div class="kpi-value">102</div><div class="kpi-sub pos">74.5% — no prior history</div></div>
+    <div class="kpi" style="--accent:var(--red)"><div class="kpi-label">Financed Refund/CB</div><div class="kpi-value">11.68<span>%</span></div><div class="kpi-sub neg">16 events · 4 chargebacks</div></div>
+    <div class="kpi" style="--accent:var(--amber)"><div class="kpi-label">Instalment Early Exits</div><div class="kpi-value">20<span>/ 57</span></div><div class="kpi-sub neg">35% left before completing</div></div>
+  </div>
+
+  <div class="grid-2">
+    <div class="panel">
+      <div class="panel-title">Plan type breakdown</div>
+      <div class="chart-wrap" style="height:200px;"><canvas id="finPlanTypeChart"></canvas></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Early exits by cycle completed</div>
+      <div class="chart-wrap" style="height:160px;"><canvas id="earlyExitChart"></canvas></div>
+      <div class="divider" style="margin:14px 0;"></div>
+      <div class="stat-row"><span class="stat-label">Exited in first 2 cycles</span><span class="stat-val neg">13 of 20 (65%)</span></div>
+      <div class="stat-row"><span class="stat-label">Exited cycles 3–4</span><span class="stat-val warn">4 of 20 (20%)</span></div>
+      <div class="stat-row"><span class="stat-label">Completed all cycles</span><span class="stat-val muted">0 (product too new)</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════ TAB 5: UPGRADES -->
+<div id="tab-upgrades" class="content">
+  <div class="section-title">Upgrades & Win-backs</div>
+  <div class="section-desc">Cross-product movement · Tier progression · Time-to-upgrade analysis</div>
+
+  <div class="grid-4">
+    <div class="kpi" style="--accent:var(--green)"><div class="kpi-label">M1 → LT Win-backs</div><div class="kpi-value">27</div><div class="kpi-sub">4.7% of 569 m1 churners</div></div>
+    <div class="kpi" style="--accent:var(--purple)"><div class="kpi-label">M1 → Financed</div><div class="kpi-value">8</div><div class="kpi-sub pos">6 of 8 still active</div></div>
+    <div class="kpi" style="--accent:var(--teal)"><div class="kpi-label">Median Time to Upgrade</div><div class="kpi-value">50<span>days</span></div><div class="kpi-sub">After monthly cancellation</div></div>
+    <div class="kpi" style="--accent:var(--amber)"><div class="kpi-label">Tier Upgrades (of 27)</div><div class="kpi-value">12</div><div class="kpi-sub warn">44% jumped a tier</div></div>
+  </div>
+
+  <div class="grid-2">
+    <div class="panel">
+      <div class="panel-title">Tier movement on LT upgrade</div>
+      <div class="chart-wrap" style="height:200px;"><canvas id="tierMoveChart"></canvas></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Upgrade path by starting tier</div>
+      <div class="chart-wrap" style="height:200px;"><canvas id="tierPathChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="grid-3">
+    <div class="insight" style="--accent:var(--green)">
+      <div class="insight-title">Edge & Elite buyers skip straight to Chiefs</div>
+      <div class="insight-body">83% of Traders Edge churners who came back went to Chiefs Mastery — skipping Traders Elite entirely. Monthly was a trial, not a stepping stone.</div>
+    </div>
+    <div class="insight" style="--accent:var(--amber)">
+      <div class="insight-title">Two upgrade windows: quick and slow</div>
+      <div class="insight-body">Several upgraded same-day or within 7 days — likely price-testing. A second cluster returned 180–360 days later. Two-touch win-back at 14 days + 6 months would capture both.</div>
+    </div>
+    <div class="insight" style="--accent:var(--blue)">
+      <div class="insight-title">Tier upgraders retain better</div>
+      <div class="insight-body">7 of 12 tier upgraders are still active. Only 5 of 12 same-tier conversions are active. Buyers who chose to step up appear to be your most committed.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════ TAB 6: NEW VS RETURNING -->
+<div id="tab-newvret" class="content">
+  <div class="section-title">New vs Returning Subscribers</div>
+  <div class="section-desc">Cross-referencing subscription history across all three product lines. 53 subscribers appear in 2+ products.</div>
+
+  <div class="grid-4">
+    <div class="kpi" style="--accent:var(--blue)"><div class="kpi-label">Monthly Only</div><div class="kpi-value">784</div><div class="kpi-sub">55.0% of unique subs</div></div>
+    <div class="kpi" style="--accent:var(--green)"><div class="kpi-label">LT Only</div><div class="kpi-value">486</div><div class="kpi-sub">34.1% — went direct to LT</div></div>
+    <div class="kpi" style="--accent:var(--purple)"><div class="kpi-label">Financed Only</div><div class="kpi-value">102</div><div class="kpi-sub">7.2% — unique to financed</div></div>
+    <div class="kpi" style="--accent:var(--amber)"><div class="kpi-label">Multi-Product</div><div class="kpi-value">53</div><div class="kpi-sub warn">3.7% appear in 2+ lists</div></div>
+  </div>
+
+  <div class="grid-2">
+    <div class="panel">
+      <div class="panel-title">Subscriber distribution by product history</div>
+      <div class="chart-wrap" style="height:240px;"><canvas id="subDistChart"></canvas></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Cross-product overlap & retention</div>
+      <div class="compare-header"><div class="compare-cell">Segment</div><div class="compare-cell">Count</div><div class="compare-cell">% total</div><div class="compare-cell">Avg retention</div></div>
+      <div class="compare-row"><div class="compare-val">Monthly only</div><div class="compare-val info">784</div><div class="compare-val">55.0%</div><div class="compare-val neg">1.8 mo</div></div>
+      <div class="compare-row"><div class="compare-val">LT only (direct)</div><div class="compare-val pos">486</div><div class="compare-val">34.1%</div><div class="compare-val pos">10.5 mo</div></div>
+      <div class="compare-row"><div class="compare-val">Financed only</div><div class="compare-val" style="color:var(--purple)">102</div><div class="compare-val">7.2%</div><div class="compare-val warn">2.1 mo (ramp)</div></div>
+      <div class="compare-row"><div class="compare-val">Monthly → LT</div><div class="compare-val warn">41</div><div class="compare-val">2.9%</div><div class="compare-val pos">10.2 mo LT</div></div>
+      <div class="compare-row"><div class="compare-val">Monthly → Financed</div><div class="compare-val warn">10</div><div class="compare-val">0.7%</div><div class="compare-val pos">6 of 10 active</div></div>
+      <div class="compare-row"><div class="compare-val">LT + Financed</div><div class="compare-val">4</div><div class="compare-val">0.3%</div><div class="compare-val muted">Dual holders</div></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">Retention comparison: new direct vs returning</div>
+    <div class="legend"><div class="legend-item"><div class="legend-dot" style="background:#2adc8a"></div>LT direct</div><div class="legend-item"><div class="legend-dot" style="background:#f5a623"></div>LT from monthly</div><div class="legend-item"><div class="legend-dot" style="background:#4f9cf9"></div>Monthly (all)</div><div class="legend-item"><div class="legend-dot" style="background:#a78bfa"></div>Financed</div></div>
+    <div class="chart-wrap" style="height:180px;"><canvas id="retentionCompChart"></canvas></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════ TAB 7: REFUNDS & CHARGEBACKS -->
+<div id="tab-refunds" class="content">
+  <div class="section-title">Refunds, Chargebacks & Cancellations</div>
+  <div class="section-desc">
+    Policy context: Only Long-term and Financed subscribers are eligible for the 60-Day Satisfaction Guarantee. Monthly subscribers can cancel but are not eligible for refunds.
+    <br style="margin-bottom:6px;">
+    <strong style="color:var(--green)">HONORED REFUND</strong> — subscriber completed all Satisfaction Guarantee requirements → refund issued &nbsp;·&nbsp;
+    <strong style="color:var(--amber)">DENIED / EXPIRED</strong> — requested but did not meet requirements or missed the 60-day window → NOT refunded, subscription ran to term &nbsp;·&nbsp;
+    <strong style="color:var(--red)">CHARGEBACK</strong> — bypassed the refund process or refused to complete requirements and disputed via their bank
+  </div>
+
+  <div class="grid-4">
+    <div class="kpi" style="--accent:var(--green)">
+      <div class="kpi-label">Honored Refunds</div>
+      <div class="kpi-value">18</div>
+      <div class="kpi-sub pos">2.59% of eligible subs (694)</div>
+    </div>
+    <div class="kpi" style="--accent:var(--amber)">
+      <div class="kpi-label">Denied / Expired Requests</div>
+      <div class="kpi-value">37</div>
+      <div class="kpi-sub warn">Not refunded — ran to end of term</div>
+    </div>
+    <div class="kpi" style="--accent:var(--red)">
+      <div class="kpi-label">Chargebacks</div>
+      <div class="kpi-value">10</div>
+      <div class="kpi-sub neg">Disputed outside the guarantee process</div>
+    </div>
+    <div class="kpi" style="--accent:var(--blue)">
+      <div class="kpi-label">Monthly Policy Flags</div>
+      <div class="kpi-value">8</div>
+      <div class="kpi-sub">Monthly subs that attempted a refund request (ineligible)</div>
+    </div>
+  </div>
+
+  <!-- Policy funnel -->
+  <div class="panel" style="margin-bottom:24px;">
+    <div class="panel-title">60-Day Satisfaction Guarantee — outcome funnel (LT + Financed eligible pool)</div>
+    <div class="flow-row">
+      <div class="flow-node">
+        <div class="flow-node-label">Eligible Pool</div>
+        <div class="flow-node-val info">694</div>
+        <div class="flow-node-sub">LT + Financed subscribers</div>
+      </div>
+      <div class="flow-arrow"><div class="arrow-line"></div><div class="arrow-label">no issue</div><div class="arrow-count pos">635 (91.5%)</div><div class="arrow-line"></div></div>
+      <div class="flow-node">
+        <div class="flow-node-label">No Event</div>
+        <div class="flow-node-val pos">635</div>
+        <div class="flow-node-sub">91.5% — satisfied / no request</div>
+      </div>
+      <div class="flow-arrow"><div class="arrow-line"></div><div class="arrow-label">requested</div><div class="arrow-count warn">59 (8.5%)</div><div class="arrow-line"></div></div>
+      <div class="flow-node">
+        <div class="flow-node-label">Requested Refund</div>
+        <div class="flow-node-val warn">59</div>
+        <div class="flow-node-sub">8.5% of eligible pool</div>
+      </div>
+      <div class="flow-arrow"><div class="arrow-line"></div><div class="arrow-label">qualified</div><div class="arrow-count pos">18</div><div class="arrow-line"></div></div>
+      <div class="flow-node">
+        <div class="flow-node-label">Honored</div>
+        <div class="flow-node-val pos">18</div>
+        <div class="flow-node-sub">Completed requirements (30.5% of requests)</div>
+      </div>
+      <div class="flow-arrow"><div class="arrow-line"></div><div class="arrow-label">didn't qualify / CB</div><div class="arrow-count neg">41</div><div class="arrow-line"></div></div>
+      <div class="flow-node">
+        <div class="flow-node-label">Denied or CB</div>
+        <div class="flow-node-val neg">41</div>
+        <div class="flow-node-sub">37 denied (ran to term) · 9 chargebacks</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="panel">
+      <div class="panel-title">Outcome breakdown by eligible product line</div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#2adc8a"></div>Honored refund</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#f5a623"></div>Denied / expired (ran to term)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#f25c5c"></div>Chargeback</div>
+      </div>
+      <div class="chart-wrap" style="height:230px;"><canvas id="rcbByTypeChart"></canvas></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">CTM-12 Month deep dive — largest eligible plan (214 subs)</div>
+      <div class="chart-wrap" style="height:180px;"><canvas id="ctm12Chart"></canvas></div>
+      <div class="divider" style="margin:12px 0;"></div>
+      <div class="stat-row"><span class="stat-label">No event (satisfied)</span><span class="stat-val pos">177 of 214 (82.7%)</span></div>
+      <div class="stat-row"><span class="stat-label">Honored refund (met requirements)</span><span class="stat-val pos">14 (6.5%)</span></div>
+      <div class="stat-row"><span class="stat-label">Denied / expired (didn't qualify)</span><span class="stat-val warn">19 (8.9%) — ran to end of term</span></div>
+      <div class="stat-row"><span class="stat-label">Chargeback (bypassed process)</span><span class="stat-val neg">4 (1.9%)</span></div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="panel">
+      <div class="panel-title">Refund outcomes: product owners vs non-owners (eligible pool)</div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#2adc8a"></div>Honored</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#f5a623"></div>Denied</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#f25c5c"></div>Chargeback</div>
+      </div>
+      <div class="chart-wrap" style="height:200px;"><canvas id="rcbOwnerChart"></canvas></div>
+      <div class="divider" style="margin:12px 0;"></div>
+      <div class="stat-row"><span class="stat-label">Non-owners: honored rate</span><span class="stat-val neg">4.33% (14 of 323)</span></div>
+      <div class="stat-row"><span class="stat-label">Non-owners: denied rate</span><span class="stat-val warn">7.74% (25 of 323)</span></div>
+      <div class="stat-row"><span class="stat-label">Product owners: honored rate</span><span class="stat-val pos">1.08% (4 of 371)</span></div>
+      <div class="stat-row"><span class="stat-label">Product owners: denied rate</span><span class="stat-val pos">1.89% (7 of 371)</span></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Chargebacks — all 10 cases with context</div>
+      <table class="data-table" style="font-size:10px;">
+        <thead><tr><th>Email</th><th>Plan</th><th>Type</th><th>Status</th><th>Note</th></tr></thead>
+        <tbody>
+          <tr><td style="color:var(--text3)">jtkrauser@gmail.com</td><td>CTM - 12 Month</td><td><span class="badge b-red">LT</span></td><td><span class="badge b-green">active</span></td><td style="color:var(--text3)">Still active despite CB</td></tr>
+          <tr><td style="color:var(--text3)">lightbearer2012@gmail.com</td><td>CTM - 12 Month</td><td><span class="badge b-red">LT</span></td><td><span class="badge b-green">active</span></td><td style="color:var(--text3)">Still active despite CB</td></tr>
+          <tr><td style="color:var(--text3)">the2nd40@aol.com</td><td>CTM - 12 Month</td><td><span class="badge b-red">LT</span></td><td><span class="badge b-green">active</span></td><td style="color:var(--text3)">Still active despite CB</td></tr>
+          <tr><td style="color:var(--text3)">indigo120@gmail.com</td><td>CTM - 12 Month</td><td><span class="badge b-red">LT</span></td><td><span class="badge b-green">active</span></td><td style="color:var(--text3)">Still active despite CB</td></tr>
+          <tr><td style="color:var(--text3)">mannysibug2012@gmail.com</td><td>CTM - R</td><td><span class="badge b-purple">Financed</span></td><td><span class="badge b-green">active</span></td><td style="color:var(--text3)">Still paying installments</td></tr>
+          <tr><td style="color:var(--text3)">dorothywinkw@aol.com</td><td>CTM 2025 (Monthly)</td><td><span class="badge b-amber">Monthly</span></td><td><span class="badge b-green">active</span></td><td style="color:var(--text3)">Monthly — ineligible for refund</td></tr>
+          <tr><td style="color:var(--text3)">robertjtoporowski@gmail.com</td><td>Legacy Edition - 6mo</td><td><span class="badge b-red">LT</span></td><td><span class="badge b-red">canceled</span></td><td style="color:var(--text3)">Canceled Aug 2025</td></tr>
+          <tr><td style="color:var(--text3)">bibinmc@gmail.com</td><td>CTM 2025 - f</td><td><span class="badge b-purple">Financed</span></td><td><span class="badge b-amber">expired</span></td><td style="color:var(--text3)">Left after 2 cycles</td></tr>
+          <tr><td style="color:var(--text3)">haroldsingh97@gmail.com</td><td>CTM - R</td><td><span class="badge b-purple">Financed</span></td><td><span class="badge b-amber">expired</span></td><td style="color:var(--text3)">Left after 1 month</td></tr>
+          <tr><td style="color:var(--text3)">stevemhenry@gmail.com</td><td>CTM - R</td><td><span class="badge b-purple">Financed</span></td><td><span class="badge b-amber">expired</span></td><td style="color:var(--text3)">Left after 1 month</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-bottom:24px;">
+    <div class="panel-title">Denied / expired requests — 37 subscribers who did NOT receive a refund</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:16px;">
+      <div class="kpi" style="--accent:var(--amber);padding:14px;">
+        <div class="kpi-label">Still Active</div>
+        <div class="kpi-value" style="font-size:22px;">17</div>
+        <div class="kpi-sub warn">Request unresolved — subscription ongoing</div>
+      </div>
+      <div class="kpi" style="--accent:var(--gray);padding:14px;">
+        <div class="kpi-label">Expired (ran to term)</div>
+        <div class="kpi-value" style="font-size:22px;">13</div>
+        <div class="kpi-sub muted">Did not rebill after expiry</div>
+      </div>
+      <div class="kpi" style="--accent:var(--red);padding:14px;">
+        <div class="kpi-label">Canceled Early</div>
+        <div class="kpi-value" style="font-size:22px;">7</div>
+        <div class="kpi-sub neg">Cancelled before term ended</div>
+      </div>
+    </div>
+    <div class="stat-row"><span class="stat-label">Denied requests in LT plans</span><span class="stat-val">23 of 37 (62%)</span></div>
+    <div class="stat-row"><span class="stat-label">Denied requests in Financed plans</span><span class="stat-val">9 of 37 (24%)</span></div>
+    <div class="stat-row"><span class="stat-label">Denied on Monthly (ineligible — no refund policy)</span><span class="stat-val">5 of 37 (14%)</span></div>
+    <div class="stat-row"><span class="stat-label">Tier: Chiefs Mastery</span><span class="stat-val neg">36 of 37 (97%)</span></div>
+    <div class="stat-row"><span class="stat-label">Tier: Traders Edge</span><span class="stat-val">1 of 37</span></div>
+  </div>
+
+  <div class="grid-3">
+    <div class="insight" style="--accent:var(--green)">
+      <div class="insight-title">The guarantee is working — only 2.59% of eligible subs needed a refund</div>
+      <div class="insight-body">Of 694 eligible subscribers, only 18 (2.59%) successfully completed the 60-day Satisfaction Guarantee requirements and received a refund. The 91.5% "no event" rate means the vast majority of long-term buyers stayed without issue. The elevated CTM-12 rate (6.5%) is expected given it's the largest-volume, highest-commitment plan.</div>
+    </div>
+    <div class="insight" style="--accent:var(--amber)">
+      <div class="insight-title">69.5% of refund requests didn't qualify — and weren't refunded</div>
+      <div class="insight-body">Of 59 refund requests across eligible products, 41 were denied (37 didn't meet requirements / missed the window, 9 escalated to chargebacks). These 37 denied subscribers ran out their subscription terms as normal. The 17 still-active denials represent subscribers who requested but are still being billed — worth monitoring.</div>
+    </div>
+    <div class="insight" style="--accent:var(--red)">
+      <div class="insight-title">4 of 10 chargebacks are still active subscribers</div>
+      <div class="insight-body">Four CTM-12 Month chargebacks show as "active" — meaning the dispute was filed but the subscription wasn't terminated. This is a high-risk situation: these accounts have disputed a payment yet continue to have access. They should be reviewed and access paused pending resolution.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════ TAB 8: PRODUCT OWNERSHIP IMPACT -->
+<div id="tab-products" class="content">
+  <div class="section-title">Product Ownership Impact</div>
+  <div class="section-desc">Did owning UTP, PSPro, TSPro, or TTMAX before subscribing lead to better retention? The data says yes — dramatically so.</div>
+
+  <div class="grid-4">
+    <div class="kpi" style="--accent:var(--green)">
+      <div class="kpi-label">Product Owners</div>
+      <div class="kpi-value">727</div>
+      <div class="kpi-sub pos">44.7% of all records</div>
+    </div>
+    <div class="kpi" style="--accent:var(--green)">
+      <div class="kpi-label">Owners Avg Duration</div>
+      <div class="kpi-value">5.49<span>mo</span></div>
+      <div class="kpi-sub pos">vs 2.45 mo for non-owners</div>
+    </div>
+    <div class="kpi" style="--accent:var(--teal)">
+      <div class="kpi-label">3-Product Owners Avg</div>
+      <div class="kpi-value">10.57<span>mo</span></div>
+      <div class="kpi-sub pos">3× longer than non-owners</div>
+    </div>
+    <div class="kpi" style="--accent:var(--blue)">
+      <div class="kpi-label">Owner Refund/CB Rate</div>
+      <div class="kpi-value">2.34<span>%</span></div>
+      <div class="kpi-sub pos">vs 5.55% non-owners (–58%)</div>
+    </div>
+  </div>
+
+  <!-- Per-product comparison bars -->
+  <div class="panel" style="margin-bottom:24px;">
+    <div class="panel-title">Impact per product: avg duration (expired/canceled subs)</div>
+    <div style="padding:4px 0;">
+      <div class="prod-bar-row">
+        <div class="prod-bar-label" style="color:var(--text3)">No product</div>
+        <div class="prod-bar-track"><div class="prod-bar-fill" style="width:22%;background:var(--text3)"></div></div>
+        <div class="prod-bar-meta">
+          <div class="prod-bar-stat neg">2.45 mo avg</div>
+          <div class="prod-bar-stat" style="color:var(--text3)">901 subs</div>
+          <div class="prod-bar-stat neg">5.55% R/CB</div>
+        </div>
+      </div>
+      <div class="prod-bar-row">
+        <div class="prod-bar-label pos">UTP</div>
+        <div class="prod-bar-track"><div class="prod-bar-fill" style="width:60%;background:var(--blue)"></div></div>
+        <div class="prod-bar-meta">
+          <div class="prod-bar-stat pos">7.04 mo avg</div>
+          <div class="prod-bar-stat" style="color:var(--text3)">703 subs</div>
+          <div class="prod-bar-stat pos">2.42% R/CB</div>
+        </div>
+      </div>
+      <div class="prod-bar-row">
+        <div class="prod-bar-label pos">PSPro</div>
+        <div class="prod-bar-track"><div class="prod-bar-fill" style="width:80%;background:var(--teal)"></div></div>
+        <div class="prod-bar-meta">
+          <div class="prod-bar-stat pos">9.43 mo avg</div>
+          <div class="prod-bar-stat" style="color:var(--text3)">143 subs</div>
+          <div class="prod-bar-stat pos">0.70% R/CB</div>
+        </div>
+      </div>
+      <div class="prod-bar-row">
+        <div class="prod-bar-label pos">TSPro</div>
+        <div class="prod-bar-track"><div class="prod-bar-fill" style="width:82%;background:var(--purple)"></div></div>
+        <div class="prod-bar-meta">
+          <div class="prod-bar-stat pos">9.57 mo avg</div>
+          <div class="prod-bar-stat" style="color:var(--text3)">77 subs</div>
+          <div class="prod-bar-stat pos">2.60% R/CB</div>
+        </div>
+      </div>
+      <div class="prod-bar-row">
+        <div class="prod-bar-label pos">TTMAX</div>
+        <div class="prod-bar-track"><div class="prod-bar-fill" style="width:75%;background:var(--amber)"></div></div>
+        <div class="prod-bar-meta">
+          <div class="prod-bar-stat pos">8.78 mo avg</div>
+          <div class="prod-bar-stat" style="color:var(--text3)">119 subs</div>
+          <div class="prod-bar-stat pos">0.84% R/CB</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="panel">
+      <div class="panel-title">Avg duration by number of products owned</div>
+      <div class="chart-wrap" style="height:220px;"><canvas id="prodCountDurChart"></canvas></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Refund/CB rate by number of products owned</div>
+      <div class="chart-wrap" style="height:220px;"><canvas id="prodCountRcbChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="panel">
+      <div class="panel-title">Duration by tier: owners vs non-owners (expired subs)</div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#555a72"></div>Non-owners</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#2adc8a"></div>Product owners</div>
+      </div>
+      <div class="chart-wrap" style="height:200px;"><canvas id="tierOwnerDurChart"></canvas></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Active rate by product owned</div>
+      <div class="chart-wrap" style="height:200px;"><canvas id="activeByProdChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-bottom:24px;">
+    <div class="panel-title">Product combination matrix (n ≥ 10 subs)</div>
+    <table class="data-table">
+      <thead><tr><th>UTP</th><th>PSPro</th><th>TSPro</th><th>TTMAX</th><th>Subscribers</th><th>Avg Duration</th><th>Active %</th><th>R/CB Rate</th><th>Signal</th></tr></thead>
+      <tbody id="combosTableBody"></tbody>
+    </table>
+  </div>
+
+  <div class="grid-3">
+    <div class="insight" style="--accent:var(--green)">
+      <div class="insight-title">More products = dramatically longer subscriptions</div>
+      <div class="insight-body">0 products → 3.53 mo avg. 1 product → 6.41 mo. 2 products → 7.79 mo. 3 products → 10.57 mo. Each additional product adds ~2–3 months of expected retention. These buyers have demonstrated deeper engagement with the MTI ecosystem before committing to a subscription.</div>
+    </div>
+    <div class="insight" style="--accent:var(--teal)">
+      <div class="insight-title">PSPro and TTMAX owners have the lowest refund rates</div>
+      <div class="insight-body">PSPro owners: 0.70% refund/CB rate. TTMAX owners: 0.84%. These are buyers who have invested in premium strategy tools and likely have higher intent and more realistic expectations of the platform. Targeting these product buyers in acquisition should reduce support burden.</div>
+    </div>
+    <div class="insight" style="--accent:var(--amber)">
+      <div class="insight-title">UTP + PSPro + TTMAX combo = 11.39 month avg</div>
+      <div class="insight-body">Subscribers who own UTP, PSPro, AND TTMAX (but not TSPro) average 11.39 months with 0% refund rate across 29 subscribers. The 4-product combo (all four) averages 10.18 months but has a 4% refund rate — slightly elevated, possibly due to higher-expectation buyers. The 3-product combo is the sweet spot.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── TAB SWITCHING
+function showTab(name, btn) {
+  document.querySelectorAll('.content').forEach(c=>c.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  btn.classList.add('active');
+  renderIfNeeded(name);
+}
+
+Chart.defaults.color='#555a72';
+Chart.defaults.borderColor='rgba(255,255,255,0.06)';
+Chart.defaults.font.family="'DM Mono', monospace";
+Chart.defaults.font.size=11;
+
+const rendered=new Set();
+function renderIfNeeded(tab){
+  if(rendered.has(tab))return;
+  rendered.add(tab);
+  ({overview:renderOverview,monthly:renderMonthly,longterm:renderLongterm,
+    financed:renderFinanced,upgrades:renderUpgrades,newvret:renderNewVRet,
+    refunds:renderRefunds,products:renderProducts})[tab]?.();
+}
+
+const C={green:'#2adc8a',amber:'#f5a623',red:'#f25c5c',blue:'#4f9cf9',
+         purple:'#a78bfa',teal:'#2dd4bf',gray:'#555a72',gray2:'#333646'};
+
+function mkBar(id,labels,datasets,opts={}){
+  return new Chart(id,{type:'bar',data:{labels,datasets},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:'#555a72'}},y:{grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'#555a72'}}},...opts}});
+}
+
+// ── OVERVIEW
+function renderOverview(){
+  new Chart('overlapChart',{type:'doughnut',data:{labels:['Monthly only','LT only','Financed only','Multi-product (2+)'],datasets:[{data:[784,486,102,53],backgroundColor:[C.blue,C.green,C.purple,C.amber],borderWidth:0,hoverOffset:6}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}});
+  new Chart('ownerDurChart',{type:'bar',data:{
+    labels:['Non-owners\n(expired/canceled)','Product owners\n(expired/canceled)'],
+    datasets:[{data:[2.45,5.49],backgroundColor:[C.gray,C.green],borderRadius:6}]
+  },options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>ctx.parsed.y.toFixed(2)+' months avg'}}},scales:{x:{grid:{display:false},ticks:{color:'#555a72'}},y:{ticks:{color:'#555a72',callback:v=>v+' mo'},grid:{color:'rgba(255,255,255,0.05)'}}}}});
+}
+
+// ── MONTHLY
+function renderMonthly(){
+  const months=[1,2,3,4,5,6,7,8,9,10,11,12,13,15,16,17];
+  const counts=[569,125,53,42,24,18,15,9,1,6,3,1,2,3,3,1];
+  const total=counts.reduce((a,b)=>a+b,0); let cum=0;
+  const cumPct=counts.map(v=>{cum+=v;return+(cum/total*100).toFixed(1);});
+  new Chart('churnDistChart',{type:'bar',data:{labels:months.map(m=>m+' mo'),datasets:[
+    {type:'bar',data:counts,backgroundColor:months.map(m=>m===1?C.red:m<=3?C.amber:C.gray),borderRadius:3,yAxisID:'y'},
+    {type:'line',data:cumPct,borderColor:C.blue,backgroundColor:'transparent',pointBackgroundColor:C.blue,pointRadius:3,borderWidth:1.5,tension:0.3,yAxisID:'y2'}
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:'#555a72',autoSkip:false,maxRotation:0}},y:{grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'#555a72'}},y2:{position:'right',min:0,max:100,grid:{display:false},ticks:{color:C.blue,callback:v=>v+'%'}}}}});
+
+  const cL=['Apr 24','May 24','Jun 24','Jul 24','Aug 24','Sep 24','Oct 24','Nov 24','Dec 24','Jan 25'];
+  const surv=[14,83,49,42,30,24,9,17,29,4],churn=[31,77,60,110,56,50,31,49,80,12],sRate=[31.1,51.9,45.0,27.6,34.9,32.4,22.5,25.8,26.6,25.0];
+  new Chart('cohortChart',{type:'bar',data:{labels:cL,datasets:[
+    {type:'bar',label:'Survived',data:surv,backgroundColor:C.green,borderRadius:2,stack:'s'},
+    {type:'bar',label:'Churned',data:churn,backgroundColor:C.red,borderRadius:0,stack:'s'},
+    {type:'line',data:sRate,borderColor:C.blue,backgroundColor:'transparent',pointBackgroundColor:C.blue,pointRadius:3,borderWidth:1.5,tension:0.3,yAxisID:'y2'}
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{stacked:true,grid:{display:false},ticks:{color:'#555a72',font:{size:10}}},y:{stacked:true,grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'#555a72'}},y2:{position:'right',min:0,max:60,grid:{display:false},ticks:{color:C.blue,callback:v=>v+'%'}}}}});
+
+  new Chart('dowChart',{type:'bar',data:{labels:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],datasets:[{data:[34.8,37.9,35.3,37.2,38.5,12.5,17.4],backgroundColor:[34.8,37.9,35.3,37.2,38.5,12.5,17.4].map(r=>r<20?C.red:r>37?C.green:C.gray),borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>ctx.parsed.y.toFixed(1)+'% survived'}}},scales:{x:{grid:{display:false},ticks:{color:'#555a72'}},y:{min:0,max:50,ticks:{color:'#555a72',callback:v=>v+'%'},grid:{color:'rgba(255,255,255,0.05)'}}}}});
+  new Chart('calMonthChart',{type:'bar',data:{labels:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],datasets:[{data:[25,50,50,31.1,51.9,45.5,27.6,31.6,33.3,22.5,25.8,26.6],backgroundColor:[25,50,50,31.1,51.9,45.5,27.6,31.6,33.3,22.5,25.8,26.6].map(r=>r>=45?C.green:r<=27?C.red:C.amber),borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:'#555a72'}},y:{min:0,max:60,ticks:{color:'#555a72',callback:v=>v+'%'},grid:{color:'rgba(255,255,255,0.05)'}}}}});
+
+  const prods=[{name:'Chiefs Mastery',r:20.3,s:17,t:86},{name:'Traders Edge',r:29.7,s:100,t:340},{name:'Traders Elite',r:31.0,s:88,t:286},{name:'Legacy Edition',r:62.0,s:68,t:110},{name:'Legacy w/360Pro',r:58.9,s:33,t:56}];
+  const c=document.getElementById('productSurvivalRows');
+  prods.forEach(p=>{const col=p.r>=55?C.green:p.r<=25?C.red:C.amber;c.innerHTML+=`<div style="display:flex;align-items:center;gap:16px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.06);"><div style="width:180px;font-size:12px;color:#8b90a8;">${p.name}</div><div style="flex:1;"><div class="progress-bar-wrap"><div class="progress-bar" style="width:${p.r}%;background:${col}"></div></div></div><div style="width:50px;text-align:right;font-size:13px;font-weight:500;color:${col}">${p.r}%</div><div style="width:120px;text-align:right;font-size:11px;color:#555a72">${p.s} of ${p.t} survived</div></div>`;});
+}
+
+// ── LONG-TERM
+function renderLongterm(){
+  const plans=['Chiefs M. 12mo','Legacy 12mo','Legacy+360 12mo','Edge 12mo','Elite 12mo','Chiefs M. 6mo','Legacy 6mo','Legacy+360 6mo','Edge 6mo','Elite 6mo'];
+  const avgMo=[8.3,14.4,13.1,11.9,10.4,7.3,8.4,7.3,8.0,6.8];
+  new Chart('ltPlanChart',{type:'bar',data:{labels:plans,datasets:[{data:avgMo,backgroundColor:avgMo.map(v=>v>=12?C.green:v>=9?C.teal:C.gray),borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#555a72',callback:v=>v+'mo'},grid:{color:'rgba(255,255,255,0.05)'}},y:{ticks:{color:'#8b90a8',font:{size:10}},grid:{display:false}}}}});
+  new Chart('ltVsMoDowChart',{type:'bar',data:{labels:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],datasets:[{label:'Monthly',data:[34.8,37.9,35.3,37.2,38.5,12.5,17.4],backgroundColor:C.red,borderRadius:3},{label:'Long-term',data:[95.5,95.2,95.7,96.4,96.0,85.7,100],backgroundColor:C.green,borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,labels:{color:'#8b90a8',boxWidth:10,padding:10}}},scales:{x:{grid:{display:false},ticks:{color:'#555a72'}},y:{min:0,max:110,ticks:{color:'#555a72',callback:v=>v+'%'},grid:{color:'rgba(255,255,255,0.05)'}}}}});
+  const ltM=['Apr 24','May 24','Jun 24','Jul 24','Aug 24','Sep 24','Oct 24','Nov 24','Dec 24','Jan 25','Feb 25','Mar 25','Apr 25','May 25','Jun 25','Jul 25','Aug 25','Sep 25'];
+  new Chart('ltCohortChart',{type:'bar',data:{labels:ltM,datasets:[{label:'Direct',data:[32,81,49,39,28,22,13,19,31,24,21,15,14,19,14,19,13,17],backgroundColor:C.green,borderRadius:2,stack:'s'},{label:'From monthly',data:[1,4,4,0,2,3,1,3,4,8,0,3,0,2,0,3,0,4],backgroundColor:C.amber,borderRadius:0,stack:'s'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{stacked:true,grid:{display:false},ticks:{color:'#555a72',font:{size:9},maxRotation:45,autoSkip:false}},y:{stacked:true,ticks:{color:'#555a72'},grid:{color:'rgba(255,255,255,0.05)'}}}}});
+  new Chart('ltVsMoCalChart',{type:'bar',data:{labels:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],datasets:[{label:'Monthly',data:[25,50,50,31.1,51.9,45.5,27.6,31.6,33.3,22.5,25.8,26.6],backgroundColor:C.red,borderRadius:3},{label:'Long-term',data:[93.8,95.2,94.4,95.7,98.1,94.0,91.8,95.3,100,97.4,95.1,94.6],backgroundColor:C.green,borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:'#555a72'}},y:{min:0,max:110,ticks:{color:'#555a72',callback:v=>v+'%'},grid:{color:'rgba(255,255,255,0.05)'}}}}});
+}
+
+// ── FINANCED
+function renderFinanced(){
+  new Chart('finPlanTypeChart',{type:'doughnut',data:{labels:['Ramp M2M (75)','Instalment 12-cycle (31)','Instalment 13-cycle (25)','Other (6)'],datasets:[{data:[75,31,25,6],backgroundColor:[C.blue,C.green,C.teal,C.gray],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:'#8b90a8',boxWidth:10,padding:10,font:{size:10}}}}}});
+  new Chart('earlyExitChart',{type:'bar',data:{labels:['After cycle 1','After cycle 2','After cycle 3','After cycle 4','After cycle 6'],datasets:[{data:[2,11,3,2,2],backgroundColor:[C.red,C.red,C.amber,C.amber,C.gray],borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:'#555a72',font:{size:10}}},y:{ticks:{color:'#555a72',stepSize:1},grid:{color:'rgba(255,255,255,0.05)'}}}}});
+}
+
+// ── UPGRADES
+function renderUpgrades(){
+  new Chart('tierMoveChart',{type:'doughnut',data:{labels:['Tier upgrade (12)','Same tier (12)','Downgrade (3)'],datasets:[{data:[12,12,3],backgroundColor:[C.green,C.blue,C.red],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:'#8b90a8',boxWidth:10,padding:12}}}}});
+  new Chart('tierPathChart',{type:'bar',data:{labels:['Edge (6)','Elite (9)','Chiefs (12)'],datasets:[{label:'↑ Upgrade',data:[5,7,0],backgroundColor:C.green,borderRadius:3,stack:'s'},{label:'→ Same',data:[1,1,10],backgroundColor:C.blue,borderRadius:0,stack:'s'},{label:'↓ Down',data:[0,1,2],backgroundColor:C.red,borderRadius:0,stack:'s'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,labels:{color:'#8b90a8',boxWidth:10,padding:10}}},scales:{x:{stacked:true,grid:{display:false},ticks:{color:'#555a72'}},y:{stacked:true,grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'#555a72'}}}}});
+}
+
+// ── NEW VS RETURNING
+function renderNewVRet(){
+  new Chart('subDistChart',{type:'bar',data:{labels:['Monthly\nOnly','LT\nOnly','Financed\nOnly','Monthly\n→ LT','Monthly\n→ Fin','LT +\nFin','All\n3'],datasets:[{data:[784,486,102,41,10,4,1],backgroundColor:[C.blue,C.green,C.purple,C.amber,C.teal,C.red,C.gray],borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:'#555a72',font:{size:10}}},y:{ticks:{color:'#555a72'},grid:{color:'rgba(255,255,255,0.05)'}}}}});
+  new Chart('retentionCompChart',{type:'bar',data:{labels:['LT Direct','LT from Monthly','Monthly (all)','Financed (instalment)','Financed (ramp)'],datasets:[{data:[95.7,88.1,36.7,63,24],backgroundColor:[C.green,C.teal,C.red,C.purple,C.amber],borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:'#555a72',font:{size:10}}},y:{min:0,max:110,ticks:{color:'#555a72',callback:v=>v+'%'},grid:{color:'rgba(255,255,255,0.05)'}}}}});
+}
+
+// ── REFUNDS
+function renderRefunds(){
+  // Outcome by eligible product line (LT vs Financed) — stacked bar
+  new Chart('rcbByTypeChart',{type:'bar',data:{
+    labels:['Long-term\n(557 eligible)','Financed\n(137 eligible)'],
+    datasets:[
+      {label:'Honored refund',data:[15,3],backgroundColor:C.green,borderRadius:3,stack:'s'},
+      {label:'Denied / expired (ran to term)',data:[23,9],backgroundColor:C.amber,borderRadius:0,stack:'s'},
+      {label:'Chargeback',data:[5,4],backgroundColor:C.red,borderRadius:0,stack:'s'}
+    ]
+  },options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,labels:{color:'#8b90a8',boxWidth:10,padding:10}}},scales:{
+    x:{stacked:true,grid:{display:false},ticks:{color:'#555a72'}},
+    y:{stacked:true,ticks:{color:'#555a72'},grid:{color:'rgba(255,255,255,0.05)'}}
+  }}});
+
+  // CTM-12 Month donut breakdown
+  new Chart('ctm12Chart',{type:'doughnut',data:{
+    labels:['No event (82.7%)','Honored refund (6.5%)','Denied/expired (8.9%)','Chargeback (1.9%)'],
+    datasets:[{data:[177,14,19,4],backgroundColor:[C.gray2,C.green,C.amber,C.red],borderWidth:0}]
+  },options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:'#8b90a8',boxWidth:10,padding:8,font:{size:10}}}}}});
+
+  // Owner vs non-owner grouped — rates across eligible pool only
+  new Chart('rcbOwnerChart',{type:'bar',data:{
+    labels:['Non-owners (323 eligible)','Product owners (371 eligible)'],
+    datasets:[
+      {label:'Honored refund',data:[4.33,1.08],backgroundColor:C.green,borderRadius:3},
+      {label:'Denied / expired',data:[7.74,1.89],backgroundColor:C.amber,borderRadius:3},
+      {label:'Chargeback',data:[1.55,1.08],backgroundColor:C.red,borderRadius:3}
+    ]
+  },options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,labels:{color:'#8b90a8',boxWidth:10,padding:10}},tooltip:{callbacks:{label:ctx=>ctx.dataset.label+': '+ctx.parsed.y.toFixed(2)+'%'}}},scales:{
+    x:{grid:{display:false},ticks:{color:'#555a72',font:{size:10}}},
+    y:{ticks:{color:'#555a72',callback:v=>v+'%'},grid:{color:'rgba(255,255,255,0.05)'}}
+  }}});
+}
+
+// ── PRODUCT OWNERSHIP
+function renderProducts(){
+  new Chart('prodCountDurChart',{type:'bar',data:{
+    labels:['0 products\n(901)','1 product\n(514)','2 products\n(136)','3 products\n(52)','4 products\n(25)'],
+    datasets:[{data:[3.53,6.41,7.79,10.57,10.18],backgroundColor:[C.gray,C.blue,C.teal,C.green,C.amber],borderRadius:4}]
+  },options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>ctx.parsed.y.toFixed(2)+' mo avg'}}},scales:{x:{grid:{display:false},ticks:{color:'#555a72',font:{size:10}}},y:{ticks:{color:'#555a72',callback:v=>v+'mo'},grid:{color:'rgba(255,255,255,0.05)'}}}}});
+
+  new Chart('prodCountRcbChart',{type:'bar',data:{
+    labels:['0 products','1 product','2 products','3 products','4 products'],
+    datasets:[{data:[5.55,2.92,0.74,0,4.0],backgroundColor:[C.red,C.amber,C.green,C.green,C.amber],borderRadius:4}]
+  },options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>ctx.parsed.y.toFixed(2)+'% R/CB rate'}}},scales:{x:{grid:{display:false},ticks:{color:'#555a72',font:{size:10}}},y:{ticks:{color:'#555a72',callback:v=>v+'%'},grid:{color:'rgba(255,255,255,0.05)'}}}}});
+
+  new Chart('tierOwnerDurChart',{type:'bar',data:{
+    labels:['Chiefs Mastery','Traders Edge','Traders Elite'],
+    datasets:[
+      {label:'Non-owners',data:[3.66,1.81,2.12],backgroundColor:C.gray,borderRadius:3},
+      {label:'Product owners',data:[6.38,4.48,4.12],backgroundColor:C.green,borderRadius:3}
+    ]
+  },options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,labels:{color:'#8b90a8',boxWidth:10,padding:10}}},scales:{x:{grid:{display:false},ticks:{color:'#555a72'}},y:{ticks:{color:'#555a72',callback:v=>v+'mo'},grid:{color:'rgba(255,255,255,0.05)'}}}}});
+
+  new Chart('activeByProdChart',{type:'bar',data:{
+    labels:['None','UTP','PSPro','TSPro','TTMAX'],
+    datasets:[{data:[20.98,21.60,26.60,24.70,25.20],backgroundColor:[C.gray,C.blue,C.teal,C.purple,C.amber],borderRadius:4}]
+  },options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>ctx.parsed.y.toFixed(1)+'% currently active'}}},scales:{x:{grid:{display:false},ticks:{color:'#555a72'}},y:{min:0,max:35,ticks:{color:'#555a72',callback:v=>v+'%'},grid:{color:'rgba(255,255,255,0.05)'}}}}});
+
+  const combos=[
+    {utp:false,psp:false,tsp:false,ttm:false,n:901,avg:3.53,active:20.98,rcb:5.55,highlight:false},
+    {utp:true, psp:false,tsp:false,ttm:false,n:503,avg:6.38,active:20.28,rcb:2.98,highlight:false},
+    {utp:true, psp:true, tsp:false,ttm:false,n:57, avg:8.16,active:26.32,rcb:0.00,highlight:false},
+    {utp:true, psp:false,tsp:false,ttm:true, n:47, avg:6.19,active:19.15,rcb:0.00,highlight:false},
+    {utp:true, psp:true, tsp:false,ttm:true, n:29, avg:11.39,active:31.03,rcb:0.00,highlight:true},
+    {utp:true, psp:true, tsp:true, ttm:true, n:25, avg:10.18,active:20.00,rcb:4.00,highlight:false},
+    {utp:true, psp:false,tsp:true, ttm:false,n:24, avg:9.71,active:33.33,rcb:4.17,highlight:false},
+    {utp:true, psp:true, tsp:true, ttm:false,n:13, avg:9.99,active:23.08,rcb:0.00,highlight:false},
+  ];
+  const tb=document.getElementById('combosTableBody');
+  combos.forEach(r=>{
+    const badge=(v,t)=>`<span class="badge ${v?'b-green':'b-red'}">${v?t:'—'}</span>`;
+    const durCol=r.avg>=10?'pos':r.avg>=6?'info':'muted';
+    const rcbCol=r.rcb===0?'pos':r.rcb<=3?'warn':'neg';
+    tb.innerHTML+=`<tr${r.highlight?' class="hl-green"':''}>
+      <td>${badge(r.utp,'UTP')}</td>
+      <td>${badge(r.psp,'PSPro')}</td>
+      <td>${badge(r.tsp,'TSPro')}</td>
+      <td>${badge(r.ttm,'TTMAX')}</td>
+      <td>${r.n}</td>
+      <td class="${durCol}">${r.avg.toFixed(2)} mo</td>
+      <td>${r.active.toFixed(1)}%</td>
+      <td class="${rcbCol}">${r.rcb.toFixed(2)}%</td>
+      <td>${r.highlight?'<span class="badge b-green">★ sweet spot</span>':''}</td>
+    </tr>`;
+  });
+}
+
+// Render initial tab
+renderOverview();
+</script>
+</body>
+</html>
