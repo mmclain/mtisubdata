@@ -1,0 +1,1 @@
+Primary HTML for mtisubsdata was build in Claude so we could easily analyze the subscription metrics based on product ownership, month to month versus long-term subscritpion and other factors including when they first subscribed.
